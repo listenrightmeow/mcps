@@ -5,19 +5,25 @@
   "module": "./src/index.ts",
   "type": "module",
   "scripts": {
-    "build": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- tsc",
-    "inspector": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/index.js"
+    "build": "npm run clean && npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- tsc",
+    "clean": "rimraf ./.dist",
+    "inspector:stdio": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/stdio.js",
+    "inspector:sse": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/sse.js",
+    "inspector:stream": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/stream.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^5.1.0",
     "zod": "^3.25.58"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.44.1",
+    "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
+    "rimraf": "^6.0.1",
     "typescript": "^5.8.3"
   }
 }
