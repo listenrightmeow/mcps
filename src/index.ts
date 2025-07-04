@@ -28,12 +28,16 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-try {
-    setupHandlers(server);
-    transport = new StdioServerTransport();
-    await server.connect(transport);
-    log('StdioServer running.');
-} catch (error) {
-    log(error as string, 'error');
-    process.exit(1);
+async function main() {
+    try {
+        setupHandlers(server);
+        transport = new StdioServerTransport();
+        await server.connect(transport);
+        log('StdioServer running.');
+    } catch (error) {
+        log(error as string, 'error');
+        process.exit(1);
+    }
 }
+
+main();
