@@ -2,7 +2,7 @@
   "name": "smaaash-mcp",
   "version": "0.0.1",
   "description": "",
-  "module": "./src/index.ts",
+  "module": "./.dist/stream.js",
   "type": "module",
   "scripts": {
     "build": "npm run clean && npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- tsc",
