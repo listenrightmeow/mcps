@@ -1,15 +1,22 @@
 {
-  "name": "smaaash-mcp",
+  "name": "@listenrightmeow/smaaash-mcp",
   "version": "0.0.1",
   "description": "",
-  "module": "./.dist/stream.js",
+  "module": ".dist/stream.js",
   "type": "module",
+  "bin": {
+    "smaaash-mcp": ".dist/stream.js"
+  },
+  "files": [
+    ".dist"
+  ],
   "scripts": {
-    "build": "npm run clean && npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- tsc",
-    "clean": "rimraf ./.dist",
-    "inspector:stdio": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/stdio.js",
-    "inspector:sse": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/sse.js",
-    "inspector:stream": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node ./.dist/stream.js"
+    "build": "npm run clean && npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- tsc && shx chmod +x .dist/*.js",
+    "clean": "rimraf .dist",
+    "inspector:stdio": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node .dist/stdio.js",
+    "inspector:sse": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node .dist/sse.js",
+    "inspector:stream": "npx @dotenvx/dotenvx run -f .env.${ENVIRONMENT:-local} -- npx -y @modelcontextprotocol/inspector node .dist/stream.js",
+    "prepare": "npm run build"
   },
   "keywords": [],
   "author": "",
