@@ -29,10 +29,10 @@ import {
     type GreetingPromptArgs,
 } from "./prompts/greetings/index.js";
 import {
-    type CreateMessageArgs,
+    type FoobarArgs,
     tools,
     toolHandlers,
-} from "./tools/greetings/index.js";
+} from "./tools/foobar/index.js";
 
 interface ResourceRequest {
     params: {
@@ -61,11 +61,14 @@ export const setupHandlers = (server: Server) => {
     // Return resource content when clients request it
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
-        const toolHandler = toolHandlers[name as keyof typeof toolHandlers];
-        if (!toolHandler) {
-            throw new Error('Tool not found');
+        
+        // Try foobar tools
+        const foobarToolHandler = toolHandlers[name as keyof typeof toolHandlers];
+        if (foobarToolHandler) {
+            return foobarToolHandler(args as FoobarArgs);
         }
-        return toolHandler(args as CreateMessageArgs);
+        
+        throw new Error('Tool not found');
     });
     server.setRequestHandler(ReadResourceRequestSchema, async (request): Promise<{ contents: { uri: string; text: string }[] }> => {
         let error;

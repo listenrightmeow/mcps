@@ -1,0 +1,39 @@
+{
+  "dxt_version": "0.1",
+  "name": "smaaash",
+  "version": "0.0.1",
+  "description": "local mcp sandbox",
+  "author": {
+    "name": "listenrightmeow"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/stream.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/src/stream.js"
+      ],
+      "env": {}
+    }
+  },
+  "tools": [
+    {
+      "name": "create-greeting",
+      "description": "Generate a personalized greeting message"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "create-greeting",
+      "description": "Generate a customized greeting message",
+      "arguments": [
+        "name",
+        "style",
+        "context"
+      ],
+      "text": "You are a friendly greeting generator. Your task is to create warm, welcoming, and appropriate greetings based on the time of day and context."
+    }
+  ],
+  "license": "MIT"
+}

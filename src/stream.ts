@@ -1,16 +1,22 @@
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
-import { randomUUID } from 'node:crypto';
+import cors from "cors";
 
-import { log } from "./helpers/log.js";
-import { setupHandlers } from "./handlers.js";
 import packageJson from "../package.json" with { type: "json" };
+import { setupHandlers } from "./handlers.js";
+import { log } from "./helpers/log.js";
 
 const app = express();
 const PORT = process.env['PORT'] || 3001;
 
-log(process.env['ENVIRONMENT']!,'info');
+log(process.env['ENVIRONMENT']!, 'info');
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Parse JSON bodies
+app.use(express.json());
 
 const server = new Server(
     {
@@ -19,73 +25,109 @@ const server = new Server(
     },
     {
         capabilities: {
-            prompts: {},
-            resources: {},
             tools: {},
+            resources: {},
+            prompts: {},
         }
     }
 );
 
-process.on('SIGINT', () => {
-    log('Shutting down MCP server.', 'error');
-    process.exit(0);
-});
+// Setup handlers for tools, resources, and prompts
+setupHandlers(server);
 
-// Create a transport with a required session ID
+// Create StreamableHTTPServerTransport in stateless mode for OpenAI compatibility
 const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID()
-}) as any;
-
-// Handle MCP requests
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
-app.use("/mcp", express.json(), (req: express.Request, res: express.Response) => {
-    log(`Received ${req.method} request to ${req.path}`, 'info');
-
-    const sid = req.headers['x-session-id'];
-
-    transport.onclose = () => {
-        log(`Session ${sid} closed`, 'info');
-
-        if (sid && transports[sid as string]) {
-            delete transports[sid as string];
-        }
-    };
-    
-    transport.handleRequest(
-        Object.assign(req, { auth: req.headers.authorization }),
-        res,
-        req.body
-    ).catch((error: Error) => {
-        log(`Error handling request: ${error.message}`, 'error');
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
+    sessionIdGenerator: undefined, // Stateless mode - no session management
+    enableJsonResponse: true, // Enable JSON responses for OpenAI compatibility
 });
 
-// Connect the transport to the server
-server.connect(transport as any)
-    .then(() => log('Server connected to transport', 'info'))
-    .catch((error: Error) => {
-        log(`Failed to connect transport: ${error.message}`, 'error');
-        process.exit(1);
-    });
-
-server.onclose = async () => {
-    log('Server closing', 'info');
+// Handle shutdown gracefully
+process.on('SIGINT', async () => {
+    log('Shutting down MCP server.', 'info');
     await server.close();
     process.exit(0);
-};
+});
+
+// Handle all MCP requests through the streamable transport
+app.use('/mcp', async (req, res) => {
+    try {
+        log(`Received ${req.method} request to ${req.url}`, 'info');
+        log(`Request headers: ${JSON.stringify(req.headers)}`, 'info');
+        log(`Request body: ${JSON.stringify(req.body)}`, 'info');
+        await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+        log(`Error handling request: ${(error as Error).message}`, 'error');
+        log(`Error stack: ${(error as Error).stack}`, 'error');
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error', details: (error as Error).message });
+        }
+    }
+});
+
+// Health check endpoint
+app.get('/health', (_req, res) => {
+    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Root endpoint with information
+app.get('/', (_req, res) => {
+    res.json({
+        name: packageJson.name,
+        version: packageJson.version,
+        description: 'MCP Server with Streamable HTTP Transport',
+        endpoints: {
+            mcp: '/mcp',
+            health: '/health'
+        },
+        tools: [
+            {
+                name: 'foobar',
+                description: 'A simple test tool that returns a foobar message'
+            }
+        ]
+    });
+});
 
 async function main() {
     try {
-        setupHandlers(server);
+        // Connect the server to the transport
+        await server.connect(transport as any);
         
-        app.listen(PORT, () => {
-            log(`StreamableHttp Server is running on port ${PORT}`, 'info');
+        // Start the HTTP server and return a promise that resolves when it's listening
+        await new Promise<void>((resolve, reject) => {
+            const httpServer = app.listen(PORT, (err?: Error) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                log(`Streamable HTTP MCP Server running on port ${PORT}`, 'info');
+                log(`MCP endpoint: http://localhost:${PORT}/mcp`, 'info');
+                log(`Health check: http://localhost:${PORT}/health`, 'info');
+                resolve();
+            });
+            
+            // Handle graceful shutdown
+            process.on('SIGTERM', async () => {
+                log('Received SIGTERM, shutting down gracefully', 'info');
+                httpServer.close(() => {
+                    log('HTTP server closed', 'info');
+                    process.exit(0);
+                });
+            });
         });
+        
+        // Keep the process alive with an interval
+        const keepAlive = setInterval(() => {
+            // This empty interval keeps the event loop alive
+        }, 1000);
+        
+        // Clean up interval on shutdown
+        process.on('SIGINT', () => {
+            clearInterval(keepAlive);
+        });
+        
     } catch (error) {
-        log(error as string, 'error');
+        log(`Error starting server: ${(error as Error).message}`, 'error');
         process.exit(1);
     }
 }
